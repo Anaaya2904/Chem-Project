@@ -5,29 +5,22 @@ const scoreBoard = document.getElementById('score-board');
 const shotsBoard = document.getElementById('shots-board');
 const msgOverlay = document.getElementById('msg-overlay');
 
-// Image Configuration
-let imageLoaded = false;
-const moleImage = new Image();
-moleImage.onload = () => { imageLoaded = true; };
-moleImage.onerror = () => { imageLoaded = false; };
-moleImage.src = 'download.png'; 
-
-// Game Balance / State Values
+// Game States & Mechanics Parameters
 let score = 0;
 let shots = 0;
 const particles = [];
 const clouds = [
-    {x: 100, y: 60, speed: 0.2, size: 40},
-    {x: 450, y: 90, speed: 0.15, size: 55},
-    {x: 750, y: 50, speed: 0.25, size: 35}
+    {x: 80, y: 70, speed: 0.18, size: 38},
+    {x: 400, y: 100, speed: 0.12, size: 50},
+    {x: 720, y: 60, speed: 0.22, size: 32}
 ];
 
 // Physics setup
 const gravity = 0.38;
-const bounceElasticity = 0.35;
-const friction = 0.975;
+const bounceElasticity = 0.38;
+const friction = 0.978;
 
-// Slingshot Physics Vectors
+// Slingshot Position Anchors
 const slingX = 160;
 const slingY = 340;
 const maxPull = 110;
@@ -36,7 +29,7 @@ const launchForceMultiplier = 0.16;
 const mole = {
     x: slingX,
     y: slingY,
-    radius: 24, 
+    radius: 25, 
     vx: 0,
     vy: 0,
     isDragging: false,
@@ -58,12 +51,12 @@ function init() {
     resetMole();
     spawnHoleRandomly();
     
-    // Desktop Interactivity
+    // Mouse Listeners
     canvas.addEventListener('mousedown', onMouseDown);
     window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('mouseup', onMouseUp);
 
-    // Mobile Interactivity
+    // Touch Support for Mobile/Tablets
     canvas.addEventListener('touchstart', (e) => {
         const touch = e.touches[0];
         const rect = canvas.getBoundingClientRect();
@@ -73,9 +66,13 @@ function init() {
             onMouseDown(touch);
         }
     });
-    window.addEventListener('touchmove', (e) => {
+    canvas.addEventListener('touchmove', (e) => {
         if (!mole.isDragging) return;
-        onMouseMove(e.touches[0]);
+        const touch = e.touches[0];
+        const rect = canvas.getBoundingClientRect();
+        mouseX = touch.clientX - rect.left;
+        mouseY = touch.clientY - rect.top;
+        onMouseMove(touch);
     });
     window.addEventListener('touchend', onMouseUp);
 
@@ -83,7 +80,7 @@ function init() {
 }
 
 function spawnHoleRandomly() {
-    hole.x = Math.floor(Math.random() * (700 - 420 + 1)) + 420;
+    hole.x = Math.floor(Math.random() * (680 - 420 + 1)) + 420;
 }
 
 function resetMole() {
@@ -100,16 +97,16 @@ function getDistance(x1, y1, x2, y2) {
     return Math.hypot(x2 - x1, y2 - y1);
 }
 
-function createImpactParticles(x, y, count) {
+function createImpactParticles(x, y, count, isWin = false) {
     for (let i = 0; i < count; i++) {
         particles.push({
             x: x,
             y: y,
-            vx: (Math.random() - 0.5) * 6,
-            vy: -Math.random() * 4 - 1,
-            radius: Math.random() * 5 + 3,
+            vx: (Math.random() - 0.5) * (isWin ? 8 : 5),
+            vy: -Math.random() * 5 - 2,
+            radius: Math.random() * 6 + 3,
             alpha: 1,
-            color: '#d4a373' // Dust/Earth color
+            color: isWin ? `hsl(${Math.random() * 360}, 100%, 70%)` : '#e9c46a' // Magical confetti for win, dust for bounce
         });
     }
 }
@@ -126,21 +123,20 @@ function onMouseDown(e) {
 }
 
 function onMouseMove(e) {
+    if (!mole.isDragging) return;
     const rect = canvas.getBoundingClientRect();
     mouseX = (e.clientX || e.pageX) - rect.left;
     mouseY = (e.clientY || e.pageY) - rect.top;
 
-    if (mole.isDragging) {
-        let distance = getDistance(mouseX, mouseY, slingX, slingY);
-        let angle = Math.atan2(mouseY - slingY, mouseX - slingX);
+    let distance = getDistance(mouseX, mouseY, slingX, slingY);
+    let angle = Math.atan2(mouseY - slingY, mouseX - slingX);
 
-        if (distance > maxPull) {
-            mole.x = slingX + Math.cos(angle) * maxPull;
-            mole.y = slingY + Math.sin(angle) * maxPull;
-        } else {
-            mole.x = mouseX;
-            mole.y = mouseY;
-        }
+    if (distance > maxPull) {
+        mole.x = slingX + Math.cos(angle) * maxPull;
+        mole.y = slingY + Math.sin(angle) * maxPull;
+    } else {
+        mole.x = mouseX;
+        mole.y = mouseY;
     }
 }
 
@@ -154,18 +150,18 @@ function onMouseUp() {
     mole.vy = (slingY - mole.y) * launchForceMultiplier;
 
     shots++;
-    shotsBoard.textContent = `🚀 Shots: ${shots}`;
+    if (shotsBoard) shotsBoard.textContent = `🎯 Shots: ${shots}`;
 }
 
 function triggerSuccessSequence() {
     score++;
-    scoreBoard.textContent = `⛳ Score: ${score}`;
-    msgOverlay.classList.add('show');
+    if (scoreBoard) scoreBoard.textContent = `✨ Score: ${score}`;
+    if (msgOverlay) msgOverlay.classList.add('show');
     
-    createImpactParticles(mole.x, mole.y, 25);
+    createImpactParticles(mole.x, mole.y, 40, true);
     
     setTimeout(() => {
-        msgOverlay.classList.remove('show');
+        if (msgOverlay) msgOverlay.classList.remove('show');
         resetMole();
         spawnHoleRandomly();
     }, 1400);
@@ -174,7 +170,7 @@ function triggerSuccessSequence() {
 function checkCollisions() {
     const groundY = 385;
 
-    // Hit Goal Check
+    // Check if within Target Hole boundaries
     if (mole.y + mole.radius >= groundY && mole.x >= hole.x && mole.x <= hole.x + hole.width) {
         if (Math.abs(mole.vx) < 6.5 && mole.vy >= 0) {
             triggerSuccessSequence();
@@ -182,15 +178,15 @@ function checkCollisions() {
         }
     }
 
-    // Floor Bounce Physics
+    // Ground Collision
     if (mole.y + mole.radius > groundY) {
         mole.y = groundY - mole.radius;
-        if (Math.abs(mole.vy) > 1.5) createImpactParticles(mole.x, mole.y + mole.radius, 6);
+        if (Math.abs(mole.vy) > 1.2) createImpactParticles(mole.x, mole.y + mole.radius, 6);
         mole.vy = -mole.vy * bounceElasticity;
         mole.vx *= friction;
     }
 
-    // Border Bounce Walls
+    // Side Walls Bouncing
     if (mole.x - mole.radius < 0) {
         mole.x = mole.radius;
         mole.vx = -mole.vx * bounceElasticity;
@@ -199,32 +195,32 @@ function checkCollisions() {
         mole.vx = -mole.vx * bounceElasticity;
     }
 
-    // Idle Rest State Engine reset
-    if (mole.isFlying && Math.abs(mole.vx) < 0.12 && Math.abs(mole.vy) < 0.12 && mole.y >= groundY - mole.radius - 5) {
+    // Auto Restart loop when stopped completely
+    if (mole.isFlying && Math.abs(mole.vx) < 0.15 && Math.abs(mole.vy) < 0.15 && mole.y >= groundY - mole.radius - 5) {
         setTimeout(resetMole, 600);
     }
 }
 
 function drawScenery() {
-    // Beautiful Sky Gradient
+    // Dreamy Sky Gradient
     let skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    skyGrad.addColorStop(0, '#70c1ff');
-    skyGrad.addColorStop(0.7, '#bfe3ff');
+    skyGrad.addColorStop(0, '#a1c4fd');
+    skyGrad.addColorStop(0.7, '#c2e9fb');
     ctx.fillStyle = skyGrad;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Glowing Sun
-    ctx.fillStyle = 'rgba(255, 252, 214, 0.5)';
+    // Warm Sunny Glow
+    ctx.fillStyle = 'rgba(255, 253, 230, 0.4)';
     ctx.beginPath();
-    ctx.arc(700, 80, 75, 0, Math.PI*2);
+    ctx.arc(710, 80, 80, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = '#fffdf0';
+    ctx.fillStyle = '#fff9db';
     ctx.beginPath();
-    ctx.arc(700, 80, 50, 0, Math.PI*2);
+    ctx.arc(710, 80, 45, 0, Math.PI * 2);
     ctx.fill();
 
-    // Procedural Floating Clouds Animation Engine
-    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    // Floating Fluffy Clouds
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
     clouds.forEach(c => {
         c.x += c.speed;
         if (c.x - c.size * 2 > canvas.width) c.x = -c.size * 2;
@@ -235,19 +231,19 @@ function drawScenery() {
         ctx.fill();
     });
 
-    // Back Hill Landscape layer
-    ctx.fillStyle = '#6ab04c';
+    // Cute Back Soft Hills
+    ctx.fillStyle = '#7bed9f';
     ctx.beginPath();
-    ctx.ellipse(200, 430, 400, 120, 0, 0, Math.PI*2);
-    ctx.ellipse(650, 450, 350, 140, 0, 0, Math.PI*2);
+    ctx.ellipse(220, 420, 420, 110, 0, 0, Math.PI * 2);
+    ctx.ellipse(660, 440, 360, 130, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Foreground Primary Green Lawn Field Base Line
-    ctx.fillStyle = '#4cd137';
+    // Vibrant Foreground Grass
+    ctx.fillStyle = '#2ed573';
     ctx.fillRect(0, 385, canvas.width, canvas.height - 385);
     
-    ctx.fillStyle = '#44bd32';
-    ctx.fillRect(0, 415, canvas.width, canvas.height - 415);
+    ctx.fillStyle = '#26af5f';
+    ctx.fillRect(0, 420, canvas.width, canvas.height - 420);
 }
 
 function drawTrajectory() {
@@ -258,7 +254,7 @@ function drawTrajectory() {
     let simVx = (slingX - mole.x) * launchForceMultiplier;
     let simVy = (slingY - mole.y) * launchForceMultiplier;
 
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 28; i++) {
         simVx *= friction;
         simVy += gravity;
         simX += simVx;
@@ -266,10 +262,10 @@ function drawTrajectory() {
         
         if (simY > 385) break;
 
-        // Modern glowing trajectory dots instead of flat ugly line
-        ctx.fillStyle = `rgba(255, 255, 255, ${1 - (i / 30)})`;
+        // Clean fading white guiding circular markers
+        ctx.fillStyle = `rgba(255, 255, 255, ${1 - (i / 28)})`;
         ctx.beginPath();
-        ctx.arc(simX, simY, 4.5 - (i * 0.08), 0, Math.PI * 2);
+        ctx.arc(simX, simY, 5 - (i * 0.1), 0, Math.PI * 2);
         ctx.fill();
     }
 }
@@ -278,49 +274,49 @@ function drawSlingshot(isFrontLayer) {
     ctx.lineCap = 'round';
     
     if (!isFrontLayer) {
-        // Back Wood Frame
+        // Back Support Fork Pillar
         ctx.lineWidth = 14;
-        ctx.strokeStyle = '#5c3d24';
+        ctx.strokeStyle = '#8c532b';
         ctx.beginPath();
         ctx.moveTo(slingX - 12, slingY - 10);
         ctx.lineTo(slingX - 12, 395);
         ctx.stroke();
 
-        // Rubber Band Back Segment Connection
+        // Heavy Pull Rubber Bands Back
         if (mole.isDragging) {
-            ctx.strokeStyle = '#d35400';
-            ctx.lineWidth = 6;
+            ctx.strokeStyle = '#e17055';
+            ctx.lineWidth = 7;
             ctx.beginPath();
             ctx.moveTo(slingX - 12, slingY - 10);
             ctx.lineTo(mole.x, mole.y);
             ctx.stroke();
         }
     } else {
-        // Rubber Band Front Segment Connection Overlay
+        // Heavy Pull Rubber Bands Front
         if (mole.isDragging) {
-            ctx.strokeStyle = '#e67e22';
-            ctx.lineWidth = 6;
+            ctx.strokeStyle = '#fab1a0';
+            ctx.lineWidth = 7;
             ctx.beginPath();
             ctx.moveTo(slingX + 12, slingY - 10);
             ctx.lineTo(mole.x, mole.y);
             ctx.stroke();
         }
 
-        // Front Fork Frame & Base Mount Structure
+        // Front Main Wooden Fork Stand
         ctx.lineWidth = 14;
-        ctx.strokeStyle = '#714d32';
+        ctx.strokeStyle = '#a05e32';
         ctx.beginPath();
         ctx.moveTo(slingX + 12, slingY - 10);
         ctx.lineTo(slingX + 12, 365);
         ctx.lineTo(slingX, 380);
-        ctx.lineTo(slingX, 440); // Root into ground
+        ctx.lineTo(slingX, 440); 
         ctx.stroke();
 
-        // Leather holding patch accent pouch capsule shape indicator
+        // Cozy leather safety pouch wrap anchor
         if(mole.isDragging) {
-            ctx.fillStyle = '#3a2312';
+            ctx.fillStyle = '#573719';
             ctx.beginPath();
-            ctx.arc(mole.x, mole.y, 8, 0, Math.PI*2);
+            ctx.arc(mole.x, mole.y, 9, 0, Math.PI * 2);
             ctx.fill();
         }
     }
@@ -330,6 +326,7 @@ function drawMole() {
     ctx.save();
     ctx.translate(mole.x, mole.y);
     
+    // Continuous spinning rotations during active aerial physics
     if (mole.isFlying) {
         mole.angle += (mole.vx * 0.035);
         ctx.rotate(mole.angle);
@@ -338,18 +335,18 @@ function drawMole() {
         ctx.rotate(pullAngle);
     }
 
-    if (imageLoaded) {
-        // Render custom file source setup safely
-        ctx.drawImage(moleImage, -mole.radius * 1.3, -mole.radius * 1.3, mole.radius * 2.6, mole.radius * 2.6);
-    } else {
-        // PREMIUM VECTOR ART FALLBACK - Looks incredibly polished without needing any files!
-        
-        // Shadow base
-        ctx.fillStyle = 'rgba(0,0,0,0.15)';
-        ctx.beginPath();
-        ctx.ellipse(0, mole.radius - 4, mole.radius, 8, 0, 0, Math.PI*2);
-        ctx.fill();
+    // Soft Floor Shadow drop overlay
+    ctx.fillStyle = 'rgba(0,0,0,0.12)';
+    ctx.beginPath();
+    ctx.ellipse(0, mole.radius - 4, mole.radius, 7, 0, 0, Math.PI * 2);
+    ctx.fill();
 
-        // Main Dark Chocolate Fur Body
-        ctx.fillStyle = '#4a3728';
-        ctx.beginPath();
+    // Round Chocolate Body
+    ctx.fillStyle = '#533c2e';
+    ctx.beginPath();
+    ctx.arc(0, 0, mole.radius, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Soft Pastel Peach Belly Accent
+    ctx.fillStyle = '#ffdfba';
+    ctx.beginPath();
