@@ -12,23 +12,31 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 100vh;
-            background-color: #87CEEB; /* Sky blue background */
-            font-family: Arial, sans-serif;
+            min-height: 100vh;
+            background: linear-gradient(to bottom, #4facfe 0%, #00f2fe 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        h1 {
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.4);
+            margin-bottom: 10px;
+            font-size: 40px;
         }
         canvas {
-            background-color: #a0d8ef;
-            border: 4px solid #4CAF50;
-            border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
             cursor: grab;
+            background-color: white;
         }
         canvas:active {
             cursor: grabbing;
         }
         #instructions {
             margin-top: 15px;
-            color: #333;
+            color: white;
+            background: rgba(0,0,0,0.5);
+            padding: 10px 20px;
+            border-radius: 20px;
             font-size: 18px;
             font-weight: bold;
         }
@@ -38,9 +46,8 @@
 
     <h1>Mole in One!</h1>
     <canvas id="gameCanvas" width="800" height="500"></canvas>
-    <div id="instructions">Click and drag the mole backwards, then release to shoot into the hole!</div>
+    <div id="instructions">Drag the mole backwards into the slingshot, then let go!</div>
 
-    <!-- Link to your JavaScript file -->
     <script src="script.js"></script>
 </body>
 </html>
