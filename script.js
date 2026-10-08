@@ -7,7 +7,7 @@ const msgOverlay = document.getElementById('msg-overlay');
 
 // 1. Create and source the Mole Image Asset
 const moleImage = new Image();
-moleImage.src = 'mole.png'; // Place your saved mole image file in the same GitHub folder named exactly 'mole.png'
+moleImage.src = 'download.png'; // Place your saved mole image file in the same GitHub folder named exactly 'mole.png'
 
 // Game State Values
 let score = 0;
