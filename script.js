@@ -1,357 +1,215 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-const scoreBoard = document.getElementById('score-board');
-const shotsBoard = document.getElementById('shots-board');
-const msgOverlay = document.getElementById('msg-overlay');
+// Load your mole image
+const moleImg = new Image();
+moleImg.src = 'download.png';
 
-let score = 0;
-let shots = 0;
-const particles = [];
-const clouds = [
-    {x: 80, y: 70, speed: 0.18, size: 38},
-    {x: 400, y: 100, speed: 0.12, size: 50},
-    {x: 720, y: 60, speed: 0.22, size: 32}
-];
+// Game Constants
+const GRAVITY = 0.4;
+const FRICTION = 0.8;
+const GROUND_Y = 400;
 
-const gravity = 0.38;
-const bounceElasticity = 0.38;
-const friction = 0.978;
+// Game State
+let gameState = 'ready'; // 'ready', 'flying', 'won', 'lost'
+let message = "";
 
-const slingX = 160;
-const slingY = 340;
-const maxPull = 110;
-const launchForceMultiplier = 0.16;
+// The Mole Object
+const startX = 150;
+const startY = 350;
 
-const mole = {
-    x: slingX,
-    y: slingY,
-    radius: 25, 
+let mole = {
+    x: startX,
+    y: startY,
     vx: 0,
     vy: 0,
-    isDragging: false,
-    isFlying: false,
-    angle: 0
+    radius: 25,
+    isDragging: false
 };
 
+// The Hole (Target)
 const hole = {
-    x: 630,
-    y: 385,
-    width: 85,
-    height: 22
+    x: 650,
+    y: GROUND_Y,
+    width: 60,
+    height: 15
 };
 
-let mouseX = 0;
-let mouseY = 0;
+// Mouse tracking
+let mouse = { x: 0, y: 0 };
 
-function init() {
-    resetMole();
-    spawnHoleRandomly();
-    
-    canvas.addEventListener('mousedown', onMouseDown);
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
+// --- EVENT LISTENERS ---
 
-    canvas.addEventListener('touchstart', (e) => {
-        const touch = e.touches[0];
-        const rect = canvas.getBoundingClientRect();
-        mouseX = touch.clientX - rect.left;
-        mouseY = touch.clientY - rect.top;
-        if(getDistance(mouseX, mouseY, mole.x, mole.y) < mole.radius + 35) {
-            onMouseDown(touch);
-        }
-    });
-    canvas.addEventListener('touchmove', (e) => {
-        if (!mole.isDragging) return;
-        const touch = e.touches[0];
-        onMouseMove(touch);
-    });
-    window.addEventListener('touchend', onMouseUp);
-
-    requestAnimationFrame(update);
-}
-
-function spawnHoleRandomly() {
-    hole.x = Math.floor(Math.random() * (680 - 420 + 1)) + 420;
-}
-
-function resetMole() {
-    mole.x = slingX;
-    mole.y = slingY;
-    mole.vx = 0;
-    mole.vy = 0;
-    mole.isFlying = false;
-    mole.isDragging = false;
-    mole.angle = 0;
-}
-
-function getDistance(x1, y1, x2, y2) {
-    return Math.hypot(x2 - x1, y2 - y1);
-}
-
-function createImpactParticles(x, y, count, isWin = false) {
-    for (let i = 0; i < count; i++) {
-        particles.push({
-            x: x,
-            y: y,
-            vx: (Math.random() - 0.5) * (isWin ? 8 : 5),
-            vy: -Math.random() * 5 - 2,
-            radius: Math.random() * 6 + 3,
-            alpha: 1,
-            color: isWin ? `hsl(${Math.random() * 360}, 100%, 70%)` : '#e9c46a'
-        });
-    }
-}
-
-function onMouseDown(e) {
-    if (mole.isFlying) return;
+// Get accurate mouse position relative to canvas
+function getMousePos(evt) {
     const rect = canvas.getBoundingClientRect();
-    const mX = (e.clientX || e.pageX) - rect.left;
-    const mY = (e.clientY || e.pageY) - rect.top;
+    return {
+        x: evt.clientX - rect.left,
+        y: evt.clientY - rect.top
+    };
+}
 
-    if (getDistance(mX, mY, mole.x, mole.y) < mole.radius + 35) {
+canvas.addEventListener('mousedown', (e) => {
+    if (gameState !== 'ready') return;
+    
+    mouse = getMousePos(e);
+    // Check if clicking inside the mole
+    const dist = Math.hypot(mouse.x - mole.x, mouse.y - mole.y);
+    if (dist < mole.radius) {
         mole.isDragging = true;
     }
-}
+});
 
-function onMouseMove(e) {
-    if (!mole.isDragging) return;
-    const rect = canvas.getBoundingClientRect();
-    mouseX = (e.clientX || e.pageX) - rect.left;
-    mouseY = (e.clientY || e.pageY) - rect.top;
-
-    let distance = getDistance(mouseX, mouseY, slingX, slingY);
-    let angle = Math.atan2(mouseY - slingY, mouseX - slingX);
-
-    if (distance > maxPull) {
-        mole.x = slingX + Math.cos(angle) * maxPull;
-        mole.y = slingY + Math.sin(angle) * maxPull;
-    } else {
-        mole.x = mouseX;
-        mole.y = mouseY;
-    }
-}
-
-function onMouseUp() {
-    if (!mole.isDragging) return;
-    
-    mole.isDragging = false;
-    mole.isFlying = true;
-
-    mole.vx = (slingX - mole.x) * launchForceMultiplier;
-    mole.vy = (slingY - mole.y) * launchForceMultiplier;
-
-    shots++;
-    if (shotsBoard) shotsBoard.textContent = `🎯 Shots: ${shots}`;
-}
-
-function triggerSuccessSequence() {
-    score++;
-    if (scoreBoard) scoreBoard.textContent = `✨ Score: ${score}`;
-    if (msgOverlay) msgOverlay.classList.add('show');
-    
-    createImpactParticles(mole.x, mole.y, 40, true);
-    
-    setTimeout(() => {
-        if (msgOverlay) msgOverlay.classList.remove('show');
-        resetMole();
-        spawnHoleRandomly();
-    }, 1400);
-}
-
-function checkCollisions() {
-    const groundY = 385;
-
-    if (mole.y + mole.radius >= groundY && mole.x >= hole.x && mole.x <= hole.x + hole.width) {
-        if (Math.abs(mole.vx) < 6.5 && mole.vy >= 0) {
-            triggerSuccessSequence();
-            return;
-        }
-    }
-
-    if (mole.y + mole.radius > groundY) {
-        mole.y = groundY - mole.radius;
-        if (Math.abs(mole.vy) > 1.2) createImpactParticles(mole.x, mole.y + mole.radius, 6);
-        mole.vy = -mole.vy * bounceElasticity;
-        mole.vx *= friction;
-    }
-
-    if (mole.x - mole.radius < 0) {
-        mole.x = mole.radius;
-        mole.vx = -mole.vx * bounceElasticity;
-    } else if (mole.x + mole.radius > canvas.width) {
-        mole.x = canvas.width - mole.radius;
-        mole.vx = -mole.vx * bounceElasticity;
-    }
-
-    if (mole.isFlying && Math.abs(mole.vx) < 0.15 && Math.abs(mole.vy) < 0.15 && mole.y >= groundY - mole.radius - 5) {
-        setTimeout(resetMole, 600);
-    }
-}
-
-function drawScenery() {
-    let skyGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    skyGrad.addColorStop(0, '#a1c4fd');
-    skyGrad.addColorStop(0.7, '#c2e9fb');
-    ctx.fillStyle = skyGrad;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    ctx.fillStyle = 'rgba(255, 253, 230, 0.4)';
-    ctx.beginPath();
-    ctx.arc(710, 80, 80, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#fff9db';
-    ctx.beginPath();
-    ctx.arc(710, 80, 45, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-    clouds.forEach(c => {
-        c.x += c.speed;
-        if (c.x - c.size * 2 > canvas.width) c.x = -c.size * 2;
-        ctx.beginPath();
-        ctx.arc(c.x, c.y, c.size, 0, Math.PI * 2);
-        ctx.arc(c.x + c.size * 0.6, c.y - c.size * 0.4, c.size * 0.8, 0, Math.PI * 2);
-        ctx.arc(c.x - c.size * 0.6, c.y, c.size * 0.7, 0, Math.PI * 2);
-        ctx.fill();
-    });
-
-    ctx.fillStyle = '#7bed9f';
-    ctx.beginPath();
-    ctx.ellipse(220, 420, 420, 110, 0, 0, Math.PI * 2);
-    ctx.ellipse(660, 440, 360, 130, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = '#2ed573';
-    ctx.fillRect(0, 385, canvas.width, canvas.height - 385);
-    
-    ctx.fillStyle = '#26af5f';
-    ctx.fillRect(0, 420, canvas.width, canvas.height - 420);
-}
-
-function drawTrajectory() {
-    if (!mole.isDragging) return;
-
-    let simX = mole.x;
-    let simY = mole.y;
-    let simVx = (slingX - mole.x) * launchForceMultiplier;
-    let simVy = (slingY - mole.y) * launchForceMultiplier;
-
-    for (let i = 0; i < 28; i++) {
-        simVx *= friction;
-        simVy += gravity;
-        simX += simVx;
-        simY += simVy;
+canvas.addEventListener('mousemove', (e) => {
+    if (mole.isDragging) {
+        mouse = getMousePos(e);
+        // Limit how far you can drag the mole
+        const maxDrag = 100;
+        const dist = Math.hypot(mouse.x - startX, mouse.y - startY);
         
-        if (simY > 385) break;
+        if (dist > maxDrag) {
+            const angle = Math.atan2(mouse.y - startY, mouse.x - startX);
+            mole.x = startX + Math.cos(angle) * maxDrag;
+            mole.y = startY + Math.sin(angle) * maxDrag;
+        } else {
+            mole.x = mouse.x;
+            mole.y = mouse.y;
+        }
+    }
+});
 
-        ctx.fillStyle = `rgba(255, 255, 255, ${1 - (i / 28)})`;
+// The release mechanic
+canvas.addEventListener('mouseup', () => {
+    if (mole.isDragging) {
+        mole.isDragging = false;
+        gameState = 'flying';
+        
+        // Calculate velocity based on drag distance (slingshot effect)
+        // Dragging left/down shoots it right/up
+        mole.vx = (startX - mole.x) * 0.2;
+        mole.vy = (startY - mole.y) * 0.2;
+    }
+});
+
+// Reset game on click if won or lost
+canvas.addEventListener('click', () => {
+    if (gameState === 'won' || gameState === 'lost') {
+        resetGame();
+    }
+});
+
+function resetGame() {
+    mole.x = startX;
+    mole.y = startY;
+    mole.vx = 0;
+    mole.vy = 0;
+    gameState = 'ready';
+    message = "";
+}
+
+// --- GAME LOOP ---
+
+function update() {
+    if (gameState === 'flying') {
+        // Apply physics
+        mole.vy += GRAVITY;
+        mole.x += mole.vx;
+        mole.y += mole.vy;
+
+        // Check ground collision
+        if (mole.y + mole.radius >= GROUND_Y) {
+            mole.y = GROUND_Y - mole.radius;
+            
+            // Check if it landed in the hole
+            if (mole.x > hole.x && mole.x < hole.x + hole.width) {
+                mole.vx = 0;
+                mole.vy = 0;
+                gameState = 'won';
+                message = "MOLE IN ONE! Click to play again.";
+            } else {
+                // Bounce and friction
+                mole.vy = -mole.vy * 0.5;
+                mole.vx *= FRICTION;
+
+                // Stop if moving too slow
+                if (Math.abs(mole.vx) < 0.5 && Math.abs(mole.vy) < 0.5) {
+                    mole.vx = 0;
+                    mole.vy = 0;
+                    gameState = 'lost';
+                    message = "Missed! Click to try again.";
+                }
+            }
+        }
+
+        // Check walls (out of bounds)
+        if (mole.x > canvas.width || mole.x < 0) {
+            gameState = 'lost';
+            message = "Out of bounds! Click to try again.";
+        }
+    }
+}
+
+function draw() {
+    // Clear canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw Ground
+    ctx.fillStyle = '#4CAF50'; // Green grass
+    ctx.fillRect(0, GROUND_Y, canvas.width, canvas.height - GROUND_Y);
+    
+    // Draw Dirt under grass
+    ctx.fillStyle = '#8B4513';
+    ctx.fillRect(0, GROUND_Y + 20, canvas.width, canvas.height - GROUND_Y - 20);
+
+    // Draw Hole
+    ctx.fillStyle = '#333';
+    ctx.beginPath();
+    ctx.ellipse(hole.x + hole.width / 2, hole.y, hole.width / 2, hole.height, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Draw Aiming Line (if dragging)
+    if (mole.isDragging) {
         ctx.beginPath();
-        ctx.arc(simX, simY, 5 - (i * 0.1), 0, Math.PI * 2);
+        ctx.moveTo(startX, startY);
+        ctx.lineTo(mole.x, mole.y);
+        ctx.strokeStyle = '#333';
+        ctx.lineWidth = 4;
+        ctx.stroke();
+    }
+
+    // Draw Starting Mound
+    ctx.fillStyle = '#8B4513';
+    ctx.beginPath();
+    ctx.arc(startX, startY + 25, 30, Math.PI, 0);
+    ctx.fill();
+
+    // Draw Mole
+    // If the image loads, use it. Otherwise, fallback to a brown circle so the game doesn't break
+    if (moleImg.complete && moleImg.naturalWidth !== 0) {
+        // Draw the uploaded image centered on the mole's coordinates
+        ctx.drawImage(moleImg, mole.x - mole.radius, mole.y - mole.radius, mole.radius * 2, mole.radius * 2);
+    } else {
+        ctx.fillStyle = 'saddlebrown';
+        ctx.beginPath();
+        ctx.arc(mole.x, mole.y, mole.radius, 0, Math.PI * 2);
         ctx.fill();
     }
-}
 
-function drawSlingshot(isFrontLayer) {
-    ctx.lineCap = 'round';
-    if (!isFrontLayer) {
-        ctx.lineWidth = 14;
-        ctx.strokeStyle = '#8c532b';
-        ctx.beginPath();
-        ctx.moveTo(slingX - 12, slingY - 10);
-        ctx.lineTo(slingX - 12, 395);
-        ctx.stroke();
-
-        if (mole.isDragging) {
-            ctx.strokeStyle = '#e17055';
-            ctx.lineWidth = 7;
-            ctx.beginPath();
-            ctx.moveTo(slingX - 12, slingY - 10);
-            ctx.lineTo(mole.x, mole.y);
-            ctx.stroke();
-        }
-    } else {
-        if (mole.isDragging) {
-            ctx.strokeStyle = '#fab1a0';
-            ctx.lineWidth = 7;
-            ctx.beginPath();
-            ctx.moveTo(slingX + 12, slingY - 10);
-            ctx.lineTo(mole.x, mole.y);
-            ctx.stroke();
-        }
-
-        ctx.lineWidth = 14;
-        ctx.strokeStyle = '#a05e32';
-        ctx.beginPath();
-        ctx.moveTo(slingX + 12, slingY - 10);
-        ctx.lineTo(slingX + 12, 365);
-        ctx.lineTo(slingX, 380);
-        ctx.lineTo(slingX, 440); 
-        ctx.stroke();
-
-        if(mole.isDragging) {
-            ctx.fillStyle = '#573719';
-            ctx.beginPath();
-            ctx.arc(mole.x, mole.y, 9, 0, Math.PI * 2);
-            ctx.fill();
-        }
+    // Draw Messages
+    if (message) {
+        ctx.fillStyle = 'black';
+        ctx.font = '30px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(message, canvas.width / 2, 100);
     }
 }
 
-function drawMole() {
-    ctx.save();
-    ctx.translate(mole.x, mole.y);
-    
-    if (mole.isFlying) {
-        mole.angle += (mole.vx * 0.035);
-        ctx.rotate(mole.angle);
-    } else if (mole.isDragging) {
-        let pullAngle = Math.atan2(slingY - mole.y, slingX - mole.x);
-        ctx.rotate(pullAngle);
-    }
+// Game Loop Tick
+function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
+}
 
-    ctx.fillStyle = 'rgba(0,0,0,0.12)';
-    ctx.beginPath();
-    ctx.ellipse(0, mole.radius - 4, mole.radius, 7, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = '#533c2e';
-    ctx.beginPath();
-    ctx.arc(0, 0, mole.radius, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = '#ffdfba';
-    ctx.beginPath();
-    ctx.ellipse(0, mole.radius * 0.3, mole.radius * 0.72, mole.radius * 0.52, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = '#ffccd5';
-    ctx.beginPath(); ctx.arc(-mole.radius * 0.45, mole.radius * 0.65, 5, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.arc(mole.radius * 0.25, mole.radius * 0.78, 5, 0, Math.PI * 2); ctx.fill();
-
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.arc(mole.radius * 0.1, -8, 6.5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#1e272e';
-    ctx.beginPath();
-    ctx.arc(mole.radius * 0.16, -8, 4, 0, Math.PI * 2);
-    ctx.fill();
-    
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.arc(mole.radius * 0.23, -9.5, 1.8, 0, Math.PI * 2);
-    ctx.arc(mole.radius * 0.1, -6.5, 0.8, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = 'rgba(255, 107, 107, 0.45)';
-    ctx.beginPath();
-    ctx.arc(-mole.radius * 0.3, -1, 4.5, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = '#ffb3c1';
-    ctx.beginPath();
-    ctx.ellipse(mole.radius * 0.4, -1, mole.radius * 0.4, mole.radius * 0.3, 0, 0, Math.PI * 2);
-    ctx.fill();
-    
-    ctx.fillStyle = '#ff4d6d';
+// Start loop
+loop();
