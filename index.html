@@ -1,83 +1,41 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Mole in One - Challenging & Cute</title>
-  <style>
-    body {
-      margin: 0;
-      overflow: hidden;
-      background: #87CEEB; /* Beautiful sky blue */
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      user-select: none;
-    }
-    #ui-layer {
-      position: absolute;
-      top: 20px;
-      left: 20px;
-      z-index: 10;
-      color: #2c3e50;
-      background: rgba(255, 255, 255, 0.85);
-      padding: 15px 25px;
-      border-radius: 15px;
-      border: 3px solid #34495e;
-      box-shadow: 0 8px 15px rgba(0,0,0,0.1);
-    }
-    h1 { margin: 0 0 8px 0; font-size: 1.4rem; color: #e74c3c; }
-    p { margin: 0 0 12px 0; font-size: 1rem; font-weight: bold; }
-    button {
-      background: #3498db;
-      color: white;
-      border: none;
-      padding: 10px 18px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-weight: bold;
-      font-size: 0.9rem;
-      transition: transform 0.1s, background 0.2s;
-    }
-    button:hover { background: #2980b9; transform: translateY(-2px); }
-    button:active { transform: translateY(0); }
-    canvas {
-      display: block;
-      cursor: crosshair;
-    }
-    canvas:active { cursor: grabbing; }
-    
-    #win-screen {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: rgba(255, 255, 255, 0.95);
-      padding: 40px 60px;
-      border-radius: 20px;
-      text-align: center;
-      border: 5px solid #2ecc71;
-      display: none;
-      z-index: 20;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.2);
-    }
-    #win-screen h2 { color: #27ae60; font-size: 2.8rem; margin-top: 0; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mole in One</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* Prevents scrollbars */
+            background-color: #87CEEB; /* Sky blue background */
+            font-family: sans-serif;
+        }
+        canvas {
+            display: block;
+        }
+        #instructions {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #333;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 10px 20px;
+            border-radius: 10px;
+            pointer-events: none; /* Let mouse clicks pass through to the game */
+        }
+    </style>
+    <!-- Import Matter.js for Angry Birds style physics -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
 </head>
 <body>
-
-  <div id="ui-layer">
-    <h1>⛳ Mole-in-One</h1>
-    <p id="attempts-text">Shots Taken: 0</p>
-    <button id="reset-btn">Reset Shot</button>
-  </div>
-
-  <div id="win-screen">
-    <h2>MOLE IN ONE! 🎉</h2>
-    <p style="font-size: 1.2rem; color: #555;">Avogadro (6.022 × 10²³) is proud of you.</p>
-    <p id="win-stats" style="margin-bottom: 20px;"></p>
-    <button id="play-again-btn">Play Again</button>
-  </div>
-
-  <canvas id="gameCanvas"></canvas>
-  <script src="script.js"></script>
+    <div id="instructions">
+        <h2>Mole in One</h2>
+        <p>Drag the cute mole back, aim, and release to shoot it into the hole!</p>
+    </div>
+    
+    <!-- Link to your game logic -->
+    <script src="script.js"></script>
 </body>
 </html>
